@@ -8,7 +8,8 @@ import { estaAutenticado } from '@/servicios/autentication.js'
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
   routes: [
-    { path: '/', component: CharactersView },
+    { path: '/', redirect: '/personajes' },
+    { path: '/personajes', component: CharactersView },
     { path: '/register', component: RegisterView },
     { path: '/login', component: LoginView },
     { path: '/favoritos', component: FavoritesView, meta: { requiresAuth: true } },

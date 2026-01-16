@@ -30,11 +30,6 @@
                     <span>{{ character.species }}</span>
                 </div>
 
-                <div v-if="character.type" class="flex justify-between">
-                    <span class="font-semibold">Tipo:</span>
-                    <span>{{ character.type }}</span>
-                </div>
-
                 <div class="flex justify-between">
                     <span class="font-semibold">Género:</span>
                     <span>{{ character.gender }}</span>

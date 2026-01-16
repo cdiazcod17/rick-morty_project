@@ -118,7 +118,7 @@ const handleRegister = async () => {
         })
         
         setTimeout(() => {
-            router.push('/login')
+            router.push('/favoritos')
         }, 2000)
     } catch (error) {
         console.error(error)
