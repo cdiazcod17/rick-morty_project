@@ -8,7 +8,7 @@
                 <div class="flex items-center gap-3">
                     <!-- Si no está logeado, mostrar Iniciar Sesión -->
                     <router-link 
-                        v-if="!user"
+                        v-if="!estaAutenticado()"
                         to="/login" 
                         class="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-5 py-2 rounded"
                     >
@@ -80,26 +80,19 @@
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useToast } from 'vue-toastification'
-import { getAuth, onAuthStateChanged } from 'firebase/auth'
+import { estaAutenticado, obtenerUsuario } from '@/servicios/autenticacion.js'
 import { getFirestore, doc, setDoc } from 'firebase/firestore'
 import axios from 'axios'
 import CharacterCard from '@/components/CharacterCard.vue'
 
 const router = useRouter()
 const toast = useToast()
-const auth = getAuth()
 const db = getFirestore()
 
 const characters = ref([])
 const loading = ref(false)
 const page = ref(1)
 const hasNextPage = ref(true)
-const user = ref(null)
-
-// Escuchar cambios en la autenticación
-onAuthStateChanged(auth, (currentUser) => {
-    user.value = currentUser
-})
 
 const fetchCharacters = async () => {
     loading.value = true
@@ -116,10 +109,8 @@ const fetchCharacters = async () => {
 }
 
 const handleAddToFavorites = async (character) => {
-    const currentUser = auth.currentUser
-
     // Verificar si está autenticado
-    if (!currentUser) {
+    if (!estaAutenticado()) {
         toast.warning('Debes iniciar sesión para añadir favoritos')
         setTimeout(() => {
             router.push('/login')
@@ -127,14 +118,16 @@ const handleAddToFavorites = async (character) => {
         return
     }
 
+    const usuario = obtenerUsuario()
+    
     // Verificar si el email está verificado
-    if (!currentUser.emailVerified) {
+    if (!usuario.value.emailVerified) {
         toast.error('Debes verificar tu email antes de añadir favoritos. Revisa tu bandeja de entrada.')
         return
     }
 
     try {
-        const favoriteRef = doc(db, 'users', currentUser.uid, 'favorites', character.id.toString())
+        const favoriteRef = doc(db, 'users', usuario.value.uid, 'favorites', character.id.toString())
         await setDoc(favoriteRef, {
             id: character.id,
             name: character.name,
@@ -148,6 +141,9 @@ const handleAddToFavorites = async (character) => {
 
         toast.success(`${character.name} añadido a favoritos!`)
         
+        setTimeout(() => {
+            router.push('/favoritos')
+        }, 1000)
     } catch (error) {
         toast.error('Error al añadir a favoritos')
         console.error(error)

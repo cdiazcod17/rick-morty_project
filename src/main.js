@@ -8,7 +8,7 @@ import 'vue-toastification/dist/index.css'
 //los imports activan la funcion onAuthStateChanged
 //Significa que desde el principio se estara escuchando si hay un usuario logeado o no
 import '@/firebase/config.js'
-import '@/servicios/autentication.js'
+import '@/servicios/autenticacion.js'
 import { auth } from '@/firebase/config.js'
 
 

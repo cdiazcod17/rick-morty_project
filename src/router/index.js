@@ -3,7 +3,7 @@ import FavoritesView from '@/views/FavoritesView.vue'
 import LoginView from '@/views/LoginView.vue'
 import RegisterView from '@/views/RegisterView.vue'
 import { createRouter, createWebHistory } from 'vue-router'
-import { estaAutenticado } from '@/servicios/autentication.js'
+import { estaAutenticado } from '@/servicios/autenticacion.js'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
