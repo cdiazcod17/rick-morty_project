@@ -86,11 +86,10 @@
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useToast } from 'vue-toastification'
-import { getAuth, createUserWithEmailAndPassword, sendEmailVerification } from 'firebase/auth'
+import { registrar, enviarEmailVerificacion } from '@/servicios/autenticacion.js'
 
 const router = useRouter()
 const toast = useToast()
-const auth = getAuth()
 
 const email = ref('')
 const password = ref('')
@@ -98,6 +97,7 @@ const confirmPassword = ref('')
 const loading = ref(false)
 
 const handleRegister = async () => {
+    // Validaciones
     if (password.value !== confirmPassword.value) {
         toast.error('Las contraseñas no coinciden')
         return
@@ -109,31 +109,39 @@ const handleRegister = async () => {
     }
 
     loading.value = true
-    try {
-        const userCredential = await createUserWithEmailAndPassword(auth, email.value, password.value)
-        await sendEmailVerification(userCredential.user)
+
+    const resultado = await registrar(email.value, password.value)
+    
+    if (resultado.ok) {
+        // Enviar email de verificación
+        const usuarioCreado = resultado.usuario.user
+        const emailEnviado = await enviarEmailVerificacion(usuarioCreado)
         
-        toast.success('¡Cuenta creada! Revisa tu email para verificar tu cuenta antes de usar favoritos', {
-            timeout: 6000
-        })
+        if (emailEnviado.ok) {
+            toast.success('¡Cuenta creada! Revisa tu email para verificar tu cuenta antes de usar favoritos', {
+                timeout: 6000
+            })
+        }
         
         setTimeout(() => {
-            router.push('/favoritos')
+            router.push('/')
         }, 2000)
-    } catch (error) {
-        console.error(error)
-        if (error.code === 'auth/email-already-in-use') {
+    } else {
+        // Manejo de errores
+        const errorCode = resultado.error?.code || resultado.error
+        
+        if (errorCode.includes('email-already-in-use')) {
             toast.error('Este email ya está registrado')
-        } else if (error.code === 'auth/invalid-email') {
+        } else if (errorCode.includes('invalid-email')) {
             toast.error('Email inválido')
-        } else if (error.code === 'auth/weak-password') {
+        } else if (errorCode.includes('weak-password')) {
             toast.error('Contraseña muy débil')
         } else {
             toast.error('Error al crear la cuenta')
         }
-    } finally {
-        loading.value = false
     }
+    
+    loading.value = false
 }
 </script>
 

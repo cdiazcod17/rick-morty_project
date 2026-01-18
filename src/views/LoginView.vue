@@ -67,11 +67,10 @@
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useToast } from 'vue-toastification'
-import { getAuth, signInWithEmailAndPassword } from 'firebase/auth'
+import { login } from '@/servicios/autenticacion.js'
 
 const router = useRouter()
 const toast = useToast()
-const auth = getAuth()
 
 const email = ref('')
 const password = ref('')
@@ -79,32 +78,36 @@ const loading = ref(false)
 
 const handleLogin = async () => {
     loading.value = true
-    try {
-        const userCredential = await signInWithEmailAndPassword(auth, email.value, password.value)
+    
+    const resultado = await login(email.value, password.value)
+    
+    if (resultado.ok) {
+        const usuarioLogueado = resultado.usuario.user
         
         // Verificar si el email está verificado
-        if (!userCredential.user.emailVerified) {
+        if (!usuarioLogueado.emailVerified) {
             toast.warning('Tu email aún no está verificado. Revisa tu bandeja de entrada.')
-            // Aún así permitir ver personajes pero no favoritos
         } else {
             toast.success('¡Bienvenido de vuelta!')
         }
         
         router.push('/favoritos')
-    } catch (error) {
-        console.error(error)
-        if (error.code === 'auth/invalid-credential') {
+    } else {
+        // Manejo de errores específicos
+        const errorCode = resultado.error?.code || resultado.error
+        
+        if (errorCode.includes('invalid-credential')) {
             toast.error('Email o contraseña incorrectos')
-        } else if (error.code === 'auth/user-not-found') {
+        } else if (errorCode.includes('user-not-found')) {
             toast.error('Usuario no encontrado')
-        } else if (error.code === 'auth/wrong-password') {
+        } else if (errorCode.includes('wrong-password')) {
             toast.error('Contraseña incorrecta')
         } else {
             toast.error('Error al iniciar sesión')
         }
-    } finally {
-        loading.value = false
     }
+    
+    loading.value = false
 }
 </script>
 

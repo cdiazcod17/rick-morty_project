@@ -24,11 +24,11 @@
         <!-- Contenido principal -->
         <div class="container mx-auto px-6 py-10">
             <!-- Alerta de email no verificado -->
-            <div v-if="user && !user.emailVerified" class="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4 mb-8 rounded">
+            <div v-if="usuario && !usuario.emailVerified" class="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4 mb-8 rounded">
                 <p class="font-semibold">⚠️ Email no verificado</p>
                 <p class="text-sm">Debes verificar tu email antes de poder gestionar favoritos. Revisa tu bandeja de entrada.</p>
                 <button 
-                    @click="resendVerification"
+                    @click="reenviarEmail"
                     :disabled="resendLoading"
                     class="mt-2 text-sm underline hover:no-underline"
                 >
@@ -39,7 +39,7 @@
             <!-- Mensaje de bienvenida -->
             <div class="bg-white rounded-lg shadow-md p-6 mb-8">
                 <h2 class="text-2xl font-bold text-gray-800 mb-2">
-                    Hola, {{ userEmail }}
+                    Hola, {{ usuario?.email || '' }}
                 </h2>
                 <p class="text-gray-600">
                     Tienes {{ favorites.length }} personaje(s) en favoritos
@@ -97,6 +97,11 @@
                                 <span>{{ character.species }}</span>
                             </div>
 
+                            <div v-if="character.type" class="flex justify-between">
+                                <span class="font-semibold">Tipo:</span>
+                                <span>{{ character.type }}</span>
+                            </div>
+
                             <div class="flex justify-between">
                                 <span class="font-semibold">Género:</span>
                                 <span>{{ character.gender }}</span>
@@ -118,43 +123,36 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useToast } from 'vue-toastification'
-import { getAuth, signOut, sendEmailVerification } from 'firebase/auth'
+import { logout, obtenerUsuario, enviarEmailVerificacion } from '@/servicios/autenticacion.js'
 import { getFirestore, collection, getDocs, doc, deleteDoc } from 'firebase/firestore'
 
 const router = useRouter()
 const toast = useToast()
-const auth = getAuth()
 const db = getFirestore()
 
 const favorites = ref([])
 const loading = ref(false)
 const resendLoading = ref(false)
-const user = ref(null)
-
-const userEmail = computed(() => user.value?.email || '')
+const usuario = obtenerUsuario()
 
 const loadFavorites = async () => {
-    const currentUser = auth.currentUser
-    
-    if (!currentUser) {
+    if (!usuario.value) {
         router.push('/login')
         return
     }
 
-    user.value = currentUser
-
     // Si el email no está verificado, no cargar favoritos
-    if (!currentUser.emailVerified) {
+    if (!usuario.value.emailVerified) {
         loading.value = false
         return
     }
 
     loading.value = true
     try {
-        const favoritesRef = collection(db, 'users', currentUser.uid, 'favorites')
+        const favoritesRef = collection(db, 'users', usuario.value.uid, 'favorites')
         const snapshot = await getDocs(favoritesRef)
         favorites.value = snapshot.docs.map(doc => ({
             ...doc.data(),
@@ -169,14 +167,13 @@ const loadFavorites = async () => {
 }
 
 const removeFavorite = async (characterId) => {
-    const currentUser = auth.currentUser
-    if (!currentUser || !currentUser.emailVerified) {
+    if (!usuario.value || !usuario.value.emailVerified) {
         toast.error('Debes verificar tu email primero')
         return
     }
 
     try {
-        await deleteDoc(doc(db, 'users', currentUser.uid, 'favorites', characterId.toString()))
+        await deleteDoc(doc(db, 'users', usuario.value.uid, 'favorites', characterId.toString()))
         favorites.value = favorites.value.filter(fav => fav.id !== characterId)
         toast.success('Eliminado de favoritos')
     } catch (error) {
@@ -185,26 +182,26 @@ const removeFavorite = async (characterId) => {
     }
 }
 
-const resendVerification = async () => {
+const reenviarEmail = async () => {
     resendLoading.value = true
-    try {
-        await sendEmailVerification(auth.currentUser)
+    const resultado = await enviarEmailVerificacion()
+    
+    if (resultado.ok) {
         toast.success('Email de verificación enviado. Revisa tu bandeja de entrada.')
-    } catch (error) {
-        console.error(error)
+    } else {
         toast.error('Error al enviar el email')
-    } finally {
-        resendLoading.value = false
     }
+    
+    resendLoading.value = false
 }
 
 const handleLogout = async () => {
-    try {
-        await signOut(auth)
+    const resultado = await logout()
+    
+    if (resultado.ok) {
         toast.success('Sesión cerrada')
         router.push('/')
-    } catch (error) {
-        console.error(error)
+    } else {
         toast.error('Error al cerrar sesión')
     }
 }
